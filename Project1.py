@@ -1,7 +1,8 @@
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
+from scipy.stats import norm
+
 
 rng = np.random.default_rng(42)
 
@@ -17,12 +18,6 @@ def mc_integrator():
     return mc_integral, std_error
 
 
-def gaussian(x, A, B):
-    # norm_factor = 1/np.sqrt(2*np.pi * std**2)
-    y = A*np.exp(-1*B*(x-0.2)**2)
-    return y
-
-
 def main():
     integral = []
     error = []
@@ -33,16 +28,19 @@ def main():
         if not args.show:
             continue
         print("The Monte-Carlo integrator gives:", mc_integral, "with a standard error of", std_error)
-    counts, edges = np.histogram(integral, bins=100)
-    parameters, _ = curve_fit(gaussian, edges[:-1], counts)  # Check 'norm.fit' function from scipy stats
-    fit_A = parameters[0]
-    fit_B = parameters[1]
-    gaussian_fit = gaussian(edges[:-1], fit_A, fit_B)
-    plt.bar(edges[:-1], counts, width=np.diff(edges))
-    plt.plot(edges[:-1], gaussian_fit)
-    # plt.xlabel('Value for $I_{N}$')
-    # plt.ylabel('Frequency')
-    # plt.title('$I_{N}$ results for ' + str(args.N) + ' different sets of random numbers')
+
+    plt.hist(integral, bins=80, density=True, ec='black', lw=0.5, color='dodgerblue')
+
+    avg, std = norm.fit(integral)
+    x_min, x_max = plt.xlim()
+    x = np.linspace(x_min, x_max, 100)
+    gauss_fit = norm.pdf(x, avg, std)
+
+    plt.plot(x, gauss_fit, color='r', lw=3, label=f'Gaussian fit: \n $\\mu = ${avg:.2f}, $\\sigma = ${std:.2f}' )
+    plt.xlabel('Value for $I_{N}$')
+    plt.ylabel('Frequency')
+    plt.title('$I_{N}$ results for ' + str(args.N) + ' different sets of random numbers')
+    plt.legend()
     plt.show()
 
 

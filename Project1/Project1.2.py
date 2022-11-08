@@ -39,7 +39,7 @@ def get_rms_distance(x, y):
 
 def main():
     if args.part_a:
-        n = 1000  # Number of steps
+        n = 1000 # Number of steps
         x1, y1 = random_walk(n)
         x2, y2 = random_walk(n)
         x3, y3 = random_walk(n)

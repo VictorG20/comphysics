@@ -35,8 +35,6 @@ def main():
             continue
         state[trial] = -1 * state[trial]
         energy += energy_difference
-        # if counter % 5 == 0:
-        #     print(counter, state)
 
 
 if __name__ == '__main__':

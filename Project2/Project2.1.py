@@ -12,6 +12,10 @@ udu, dud -> E = -2 J
 
 This implies that, when flipping the spin in the middle to get a new configuration, the possible energy differences
 are only Delta_E = 4, 0 and -4 (in units of J)
+
+TO DO:
+-Organize the code for part a) into sections if possible
+-Create options to either save the image or display it.
 '''
 
 
@@ -37,15 +41,13 @@ def main():
     for i in range(spins):
         c = plt.Circle((i+1, 0), radius=0.3, color=colors[state[i]])
         plt.gca().add_artist(c)
-    order = 1
 
     trials = rng.integers(low=0, high=spins, size=flips)  # Chosen spin sites to try to flip. 'high' is exclusive.
     for trial in trials:
         counter += 1
         if counter in visualize:
-            order += 1
             for i in range(spins):
-                c = plt.Circle((i + 1, 2*(order - 1)), radius=0.3, color=colors[state[i]])
+                c = plt.Circle((i + 1, 2*visualize.index(counter)), radius=0.3, color=colors[state[i]])
                 plt.gca().add_artist(c)
         energy_difference = -2.*state[trial]*(state[(trial+1) % spins] + state[trial-1])  # Modulo due to Periodic B.C.
         if energy_difference > 0 and rng.random(1) > acceptance_prob[0]:
@@ -57,5 +59,6 @@ def main():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    # parser.add_argument('--part_a')
     args = parser.parse_args()
     main()

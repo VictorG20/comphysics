@@ -1,10 +1,8 @@
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
-# import matplotlib.collections as mc
 
 rng = np.random.default_rng(42)
-
 
 '''
 In terms of energy, the sum over nearest neighbors has only the possible counting values of:
@@ -22,13 +20,13 @@ def main():
     thermal_energy = 1.
     flips = 500  # Individual trial spin flips
     state = [-1 for _ in range(spins)]  # All spins pointing in the same direction. Here they all point downwards.
-    energy = spins * state[0]  # Initial energy is known for a cold initial state. Take the appropriate sign.
+    energy = -spins  # Initial energy is known for a cold initial state. Take the appropriate sign.
 
     energy_differences = [4., 0., -4.]  # In units of 'J'.
     acceptance_prob = [min(np.exp(-delta_E/thermal_energy), 1.) for delta_E in energy_differences]
     counter = 0
 
-    # Plotting
+    # Plotting attributes
     colors = ['r', 'r', 'b']
     visualize = [0, 2, 5, 10, 20, 50, 100, 200, 300, 500]
     plt.axis([0, 21, -1, 19])

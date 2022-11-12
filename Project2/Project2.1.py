@@ -6,19 +6,27 @@ rng = np.random.default_rng(42)
 
 '''
 In terms of energy, the sum over nearest neighbors has only the possible counting values of:
-uuu, ddd -> E = 2 J
+uuu, ddd -> E = -2 J
 uud, duu, udd, ddu -> E = 0
-udu, dud -> E = -2 J
+udu, dud -> E =  2 J
 
 This implies that, when flipping the spin in the middle to get a new configuration, the possible energy differences
 are only Delta_E = 4, 0 and -4 (in units of J)
 
 TO DO:
 -For part a). Implement state visualization until there has been some change?
+-Passing 'state' and 'energy' to the function 'trial_spin_flips' is redundant. Calculate initial energy from state
+ inside the function.
+
+Observations:
+-Remember that lists are mutable objects. Therefore, if you change them inside a function, they are also changed
+ outside of it and THEY MUST BE RESTORED before running a simulation again. Otherwise you're starting a simulation
+ with the last state of the system from the previous simulation.
 '''
 
 
-def visualize_states(save_trials, saved_states, spins):
+def visualize_states(save_trials, saved_states):
+    spins = np.shape(saved_states)[1]
     colors = ['r', 'r', 'b']
     plt.axis([0.5, 20.5, -1, 19])
     ax = plt.gca()
@@ -52,7 +60,10 @@ def visualize_states(save_trials, saved_states, spins):
     return
 
 
-def trial_spin_flips(spins, state, energy, thermal_energy, flips):
+def trial_spin_flips(state, thermal_energy, flips):
+    spins = np.size(state)
+    energy = -1. * np.sum([state[i]*state[(i+1) % spins] for i in range(spins)])
+
     energy_differences = [4., 0., -4.]  # In units of 'J'.
     acceptance_prob = [min(np.exp(-delta_E / thermal_energy), 1.) for delta_E in energy_differences]
 
@@ -87,29 +98,56 @@ def trial_spin_flips(spins, state, energy, thermal_energy, flips):
 
 def main():
     spins = 20  # Number of spins in the system
-    state = [-1 for _ in range(spins)]  # All spins initially pointing in the same direction. Here it is downwards.
-    energy = -spins  # Initial energy is known for a cold initial state. Take the appropriate sign.
 
     if args.part == 'a':
+        state = [-1 for _ in range(spins)]  # All spins initially pointing in the same direction. Here it is downwards.
         thermal_energy = 1.
         flips = 500  # Individual trial spin flips
-        save_trials, saved_states = trial_spin_flips(spins, state, energy, thermal_energy, flips)
-        visualize_states(save_trials, saved_states, spins)
+        save_trials, saved_states = trial_spin_flips(state, thermal_energy, flips)
+        visualize_states(save_trials, saved_states)
     elif args.part == 'b':
         thermal_energies = [0.1, 1, 10]
         flips = 1000
         colors = ['darkviolet', 'orange', 'red']
         for i in range(np.size(thermal_energies)):
-            energies = trial_spin_flips(spins, state, energy, thermal_energies[i], flips)
+            state = [-1 for _ in range(spins)]  # All spins initially pointing in the same direction (here downwards).
+            energies = trial_spin_flips(state, thermal_energies[i], flips)
             t = np.linspace(0, flips, num=np.size(energies), endpoint=True)
             plt.plot(t, energies, label='$k_{B}T =$' + f'{thermal_energies[i]}', color=colors[i])
-        plt.xlabel('Time (in a single trial spin flip)')
+        plt.xlabel('Time (in single trials for spin flip)')
         plt.ylabel('Energy (in units of $J$)')
         plt.legend()
         if args.save:
             plt.savefig('P2-1b1.png', dpi=1200)
         else:
             plt.title(f'Time evolution of the energy for a single simulation \n under {flips:,.0f} spin flip trials')
+            plt.show()
+
+        plt.clf()  # Clear plot variable
+        simulations = 100
+
+        for i in range(np.size(thermal_energies)):
+            simulation_energy = []
+            for j in range(simulations):
+                state = [-1 for _ in range(spins)]
+                energies = trial_spin_flips(state, thermal_energies[i], flips)
+                simulation_energy.append(energies)
+            t = np.linspace(0, flips, num=np.shape(simulation_energy)[1], endpoint=True)
+            averaged_energies = np.mean(simulation_energy, axis=0)
+            squared_energies = [[energy**2 for energy in energies] for energies in simulation_energy]
+            averaged_squared_energies = np.mean(squared_energies, axis=0)
+            monte_carlo_error = np.sqrt((averaged_squared_energies - averaged_energies**2)/spins)
+            plt.plot(t, averaged_energies, label='$k_{B}T =$' + f'{thermal_energies[i]}', color=colors[i])
+            plt.fill_between(t, averaged_energies-monte_carlo_error, averaged_energies + monte_carlo_error,
+                             color=colors[i], alpha=0.3)
+        plt.xlabel('Time (in single trials for spin flip)')
+        plt.ylabel('Mean energy $\\langle E \\rangle$')
+        plt.legend()
+        if args.save:
+            plt.savefig('P2-1b2.png', dpi=1200)
+        else:
+            plt.title(f'Time evolution of the mean energy over \n'
+                      f'{simulations:,.0f} simulations for {flips:,.0f} spin flip trials')
             plt.show()
 
 

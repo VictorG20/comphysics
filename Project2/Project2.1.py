@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 rng = np.random.default_rng(42)
 
+
 '''
 In terms of energy, the sum over nearest neighbors has only the possible counting values of:
 uuu, ddd -> E = -2 J
@@ -18,6 +19,9 @@ TO DO:
 -Would it be convenient to carry the plotting in a separate function? Maybe not because titles are always different
  and so are the labels of the axes. Maybe pass them as strings into the function together with the data?
 -Can the function 'trial_spin_flips' be standardized better to avoid different returns?
+-For part b). Maybe create also a separate plot with the Monte-Carlo error estimate.
+-Both thermal energies and energies are in units of 'J'
+-Fix titles of plots. Some of them read weird.
 
 Observations:
 -Remember that lists are mutable objects. Therefore, if you change them inside a function, they are also changed
@@ -54,7 +58,7 @@ def visualize_states(save_trials, saved_states):
     plt.tight_layout()
 
     if args.save:
-        plt.savefig('P2-1a.png', dpi=1200)
+        plt.savefig(f'P2-1{args.part}.png', dpi=1200)
     else:
         plt.title('System at the given trials')
         plt.show()
@@ -93,7 +97,7 @@ def trial_spin_flips(state, thermal_energy, flips):
 
     if args.part == 'a':
         return save_trials, saved_states
-    elif args.part == 'b':
+    else:
         return energies
 
 
@@ -150,11 +154,61 @@ def main():
     if args.part == 'a':
         state = [-1 for _ in range(spins)]  # All spins initially pointing in the same direction. Here it is downwards.
         thermal_energy = 1.
-        flips = 500  # Individual trial spin flips
-        save_trials, saved_states = trial_spin_flips(state, thermal_energy, flips)
+        save_trials, saved_states = trial_spin_flips(state, thermal_energy, flips=500)
         visualize_states(save_trials, saved_states)
     elif args.part == 'b':
         part_b(spins)
+    elif args.part == 'c' or 'd':
+        thermal_energies = [i+1 for i in range(10)]  # Choose kT = 1, 2, ..., 10
+        simulations = 100  # Number of independent simulations for each thermal energy
+        avg_energy_particle = []
+        specific_heat_particle = []
+        for thermal_energy in thermal_energies:
+            time_avg_energies = []
+            specific_heats = []
+            for j in range(simulations):
+                state = [-1 for _ in range(spins)]
+                trial_spin_flips(state, thermal_energy, flips=1000)  # Run the initial state for 1000 flips first.
+                energies = trial_spin_flips(state, thermal_energy, flips=1000)  # Now get the energies after eq.
+                average_energy = np.mean(energies)
+                average_squared_energy = np.mean(np.array(energies) ** 2)
+                specific_heat = (average_squared_energy - average_energy**2)/(thermal_energy**2)
+                time_avg_energies.append(average_energy)
+                specific_heats.append(specific_heat)
+            avg_energy_particle.append(np.mean(time_avg_energies)/spins)
+            specific_heat_particle.append(np.mean(specific_heats)/spins)
+
+        temperatures = np.linspace(np.min(thermal_energies), np.max(thermal_energies), num=100)
+        if args.part == 'c':
+            plt.plot(thermal_energies, avg_energy_particle, 'o', color='b', label='Simulated values')
+            plt.plot(temperatures, -np.tanh(1/temperatures), color='r',
+                     label='$-J \\cdot \\tanh{\\frac{J}{k_{B}T}}$')
+            ax = plt.gca()
+            ax.set_xticks(np.arange(1, 11, 1.0))
+            plt.xlabel('$k_{B}T$ (in units of $J$)')
+            plt.ylabel('$\\frac{1}{N} \\langle E \\rangle_{t}$ (in units of $J$)')
+            plt.legend()
+            if args.save:
+                plt.savefig(f'P2-1{args.part}.png', dpi=1200)
+            else:
+                plt.title('Mean energy per particle over 1,000 trial spin flips, after \n '
+                          f'equilibrium has been reached, for {simulations:,.0f} simulations each')
+                plt.show()
+        else:
+            plt.plot(thermal_energies, specific_heat_particle, 'o', color='b', label='Simulated values')
+            plt.plot(temperatures, 1/((temperatures**2) * (np.cosh(1/temperatures))**2), color='r',
+                     label='$(J/k_{B}T)^{2}/\\cosh^{2}{(J/k_{B}T)}$')
+            ax = plt.gca()
+            ax.set_xticks(np.arange(1, 11, 1.0))
+            plt.xlabel('$k_{B}T$ (in units of $J$)')
+            plt.ylabel('$c_{V}(k_{B}T)$')
+            plt.legend()
+            if args.save:
+                plt.savefig(f'P2-1{args.part}.png', dpi=1200)
+            else:
+                plt.title('Specific heat per particle at constant volume over 1,000 trial spin \n '
+                          f'flips, after equilibrium has been reached, for {simulations:,.0f} simulations each')
+                plt.show()
 
 
 if __name__ == '__main__':

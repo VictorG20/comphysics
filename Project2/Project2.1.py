@@ -73,14 +73,14 @@ def trial_spin_flips(state, thermal_energy, flips, h=0.):
 
     energy_differences = sorted(set(2.*spin_mid*(spin_left + spin_right + h) for spin_mid in [-1, 1]
                                     for spin_left in [-1, 1] for spin_right in [-1, 1]))
-    positive_energy_differences = [delta_E for delta_E in energy_differences if delta_E > 0]
-    acceptance_prob = [np.exp(-delta_E / thermal_energy) for delta_E in positive_energy_differences]
+    pos_energy_differences = [delta_E for delta_E in energy_differences if delta_E > 0]
+    acceptance_prob = [np.exp(-delta_E / thermal_energy) for delta_E in pos_energy_differences]
 
     trials = rng.integers(low=0, high=spins, size=flips)  # Chosen spin sites to try to flip. 'high' is exclusive.
 
     for trial in trials:
         energy_difference = 2.*state[trial]*(state[(trial + 1) % spins] + state[trial - 1] + h)  # Modulo due to P.B.C.
-        if energy_difference > 0 and rng.random(1) > acceptance_prob[positive_energy_differences == energy_difference]:
+        if energy_difference > 0 and rng.random(1) > acceptance_prob[pos_energy_differences.index(energy_difference)]:
             energies.append(energy)
             magnetisation_values.append(magnetisation)
             continue
@@ -156,7 +156,7 @@ def part_b(spins):
 
 
 def analytical_magnetisation(kbt, h):
-    m = np.exp(1./kbt)*np.sinh(h/kbt)/np.sqrt(np.exp(2./kbt) * (np.sinh(h/kbt)**2.) + np.exp(-2./kbt))
+    m = np.exp(1./kbt) * np.sinh(h/kbt) / np.sqrt(np.exp(2./kbt) * (np.sinh(h/kbt)**2.) + np.exp(-2./kbt))
     return m
 
 
@@ -223,19 +223,32 @@ def main():
         simulations = 100  # Number of independent simulations for each thermal energy
         h_values = [0., 0.1, 1., 10.]
         temperatures = np.linspace(np.min(thermal_energies), np.max(thermal_energies), num=100)
-        for h in h_values:
+        colors = ['red', 'salmon', 'dodgerblue', 'deepskyblue', 'forestgreen', 'limegreen', 'darkviolet', 'violet']
+        for h_field in h_values:
             magnetisation_particle = []
             for thermal_energy in thermal_energies:
-                mean_magnetisation = []
-                for _ in range(simulations):
+                simulations_avg_magnetisation = []
+                for simulation in range(simulations):
                     state = [-1 for _ in range(spins)]
-                    trial_spin_flips(state, thermal_energy, flips=1000, h=h)  # Reach equilibrium
-                    _, magnetisation_values = trial_spin_flips(state, thermal_energy, flips=1000, h=h)
-                    mean_magnetisation.append(np.mean(magnetisation_values))
-                magnetisation_particle.append(np.mean(mean_magnetisation)/spins)
-            plt.plot(thermal_energies, magnetisation_particle, 'o')
-            plt.plot(temperatures, analytical_magnetisation(temperatures, h))
-        plt.show()
+                    trial_spin_flips(state, thermal_energy, flips=1000, h=h_field)  # Reach equilibrium
+                    _, magnetisation_values = trial_spin_flips(state, thermal_energy, flips=1000, h=h_field)
+                    simulations_avg_magnetisation.append(np.mean(magnetisation_values))
+                magnetisation_particle.append(np.mean(simulations_avg_magnetisation)/spins)
+            plt.plot(thermal_energies, magnetisation_particle, 'o', color=colors[2*h_values.index(h_field)],
+                     label=f'$H =$ {h_field}')
+            plt.plot(temperatures, analytical_magnetisation(temperatures, h_field),
+                     color=colors[2*h_values.index(h_field) + 1])
+        ax = plt.gca()
+        ax.set_xticks(np.arange(np.min(thermal_energies), np.max(thermal_energies)+1, 1))
+        plt.xlabel('$k_{B}T$ (in units of $J$)')
+        plt.ylabel('$m = \\langle M \\rangle / N$')
+        plt.legend()
+        if args.save:
+            plt.savefig(f'P2-1{args.part}.png', dpi=1200)
+        else:
+            plt.title('Mean magnetization per particle over 1,000 flip spin trials after \n '
+                      f'equilibrium has been reached and over {simulations:,.0f} simulations')
+            plt.show()
 
 
 if __name__ == '__main__':

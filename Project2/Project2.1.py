@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 
 rng = np.random.default_rng(42)
 
-
 '''
 In terms of energy, the sum over nearest neighbors has only the possible counting values of:
 uuu, ddd -> E = -2 J
@@ -18,10 +17,10 @@ TO DO:
 -For part a). Implement state visualization until there has been some change?
 -Would it be convenient to carry the plotting in a separate function? Maybe not because titles are always different
  and so are the labels of the axes. Maybe pass them as strings into the function together with the data?
--Can the function 'trial_spin_flips' be standardized better to avoid different returns?
 -For part b). Maybe create also a separate plot with the Monte-Carlo error estimate.
 -Both thermal energies and energies are in units of 'J'
 -Fix titles of plots. Some of them read weird.
+
 
 Observations:
 -Remember that lists are mutable objects. Therefore, if you change them inside a function, they are also changed
@@ -35,8 +34,8 @@ def visualize_states(save_trials, saved_states):
     colors = ['r', 'r', 'b']
     plt.axis([0.5, 20.5, -1, 19])
     ax = plt.gca()
-    ax.set_xticks(np.arange(1, 21, 1.0), labels='')
-    ax.set_yticks(np.arange(0, 20, 2.0), labels=save_trials)
+    ax.set_xticks(np.arange(1, spins+1, 1), labels='')
+    ax.set_yticks(np.arange(0, 2*np.size(save_trials), 2), labels=save_trials)
     ax.set_xlabel('Spins')
     ax.set_ylabel('Number of trial')
     ax.set_aspect(0.9)
@@ -52,7 +51,7 @@ def visualize_states(save_trials, saved_states):
     # Create a second y-axis
     ax2 = ax.twinx()
     ax2.set_ylim(ax.get_ylim())
-    ax2.set_yticks(np.arange(0, 20, 2), labels=down_spins)
+    ax2.set_yticks(np.arange(0, 2*np.size(save_trials), 2), labels=down_spins)
     ax2.set_ylabel('Amount of spins down')
     ax2.set_aspect(0.9)
     plt.tight_layout()
@@ -65,40 +64,48 @@ def visualize_states(save_trials, saved_states):
     return
 
 
-def trial_spin_flips(state, thermal_energy, flips):
+def trial_spin_flips(state, thermal_energy, flips, h=0.):
     spins = np.size(state)
-    energy = -1. * np.sum([state[i]*state[(i+1) % spins] for i in range(spins)])
-
-    energy_differences = [4., 0., -4.]  # In units of 'J'.
-    acceptance_prob = [min(np.exp(-delta_E / thermal_energy), 1.) for delta_E in energy_differences]
-
+    energy = -1. * np.sum([state[i]*state[(i+1) % spins] for i in range(spins)]) - h*np.sum(state)
     energies = [energy]  # Keep track of the energy at each trial.
+    magnetisation = np.sum(state)
+    magnetisation_values = [magnetisation]
 
-    # Only used for part (a).
-    save_trials = [0, 5, 100, 145, 200, 300, 350, 400, 450, 500]  # Chosen times to visualize the system in the plot.
-    saved_states = [state.copy()]  # Save states to be plotted later, including the initial state.
-    # ---------------------------------------------------------------------------------------------------------
+    energy_differences = sorted(set(2.*spin_mid*(spin_left + spin_right + h) for spin_mid in [-1, 1]
+                                    for spin_left in [-1, 1] for spin_right in [-1, 1]))
+    positive_energy_differences = [delta_E for delta_E in energy_differences if delta_E > 0]
+    acceptance_prob = [np.exp(-delta_E / thermal_energy) for delta_E in positive_energy_differences]
 
     trials = rng.integers(low=0, high=spins, size=flips)  # Chosen spin sites to try to flip. 'high' is exclusive.
 
-    for i in range(flips):
-        energy_difference = 2. * state[trials[i]] * \
-                            (state[(trials[i] + 1) % spins] + state[trials[i] - 1])  # Modulo due to Periodic B.C.
-        if energy_difference > 0 and rng.random(1) > acceptance_prob[0]:
+    for trial in trials:
+        energy_difference = 2.*state[trial]*(state[(trial + 1) % spins] + state[trial - 1] + h)  # Modulo due to P.B.C.
+        if energy_difference > 0 and rng.random(1) > acceptance_prob[positive_energy_differences == energy_difference]:
             energies.append(energy)
-            if args.part == 'a' and i + 1 in save_trials:
-                saved_states.append(state.copy())
+            magnetisation_values.append(magnetisation)
             continue
-        state[trials[i]] = -1 * state[trials[i]]  # Flip spin
+        state[trial] = -1 * state[trial]  # Flip spin
+        magnetisation += 2.*state[trial]  # Update magnetisation of the system (with new value of the spin flipped)
         energy += energy_difference  # Update energy of the system
         energies.append(energy)
-        if args.part == 'a' and i + 1 in save_trials:
-            saved_states.append(state.copy())
+        magnetisation_values.append(magnetisation)
+    return energies, magnetisation_values
 
-    if args.part == 'a':
-        return save_trials, saved_states
-    else:
-        return energies
+
+def part_a(spins):
+    state = [-1 for _ in range(spins)]  # All spins initially pointing in the same direction. Here it is downwards.
+    thermal_energy = 1.
+    save_trials = [0, 5, 50, 100, 200, 300, 350, 400, 450, 500]  # Chosen times to visualize the system.
+    saved_states = [state.copy()]  # Save states at the given 'save_trials' numbers to be plotted later.
+    flips_done = 0
+    for number in save_trials:
+        if number == 0:
+            continue
+        trial_spin_flips(state, thermal_energy, flips=number-flips_done)
+        saved_states.append(state.copy())
+        flips_done = number
+    visualize_states(save_trials, saved_states)
+    return
 
 
 def part_b(spins):
@@ -107,7 +114,7 @@ def part_b(spins):
     colors = ['darkviolet', 'orange', 'red']
     for i in range(np.size(thermal_energies)):
         state = [-1 for _ in range(spins)]  # All spins initially pointing in the same direction (here downwards).
-        energies = trial_spin_flips(state, thermal_energies[i], flips)
+        energies, _ = trial_spin_flips(state, thermal_energies[i], flips)
         t = np.linspace(0, flips, num=np.size(energies), endpoint=True)
         plt.plot(t, energies, label='$k_{B}T =$' + f'{thermal_energies[i]}', color=colors[i])
     plt.xlabel('Time (in single trials for spin flip)')
@@ -126,7 +133,7 @@ def part_b(spins):
         simulation_energy = []
         for j in range(simulations):
             state = [-1 for _ in range(spins)]
-            energies = trial_spin_flips(state, thermal_energies[i], flips)
+            energies, _ = trial_spin_flips(state, thermal_energies[i], flips)
             simulation_energy.append(energies)
         t = np.linspace(0, flips, num=np.shape(simulation_energy)[1], endpoint=True)
         averaged_energies = np.mean(simulation_energy, axis=0)
@@ -148,17 +155,18 @@ def part_b(spins):
     return
 
 
-def main():
-    spins = 20  # Number of spins in the system
+def analytical_magnetisation(kbt, h):
+    m = np.exp(1./kbt)*np.sinh(h/kbt)/np.sqrt(np.exp(2./kbt) * (np.sinh(h/kbt)**2.) + np.exp(-2./kbt))
+    return m
 
+
+def main():
     if args.part == 'a':
-        state = [-1 for _ in range(spins)]  # All spins initially pointing in the same direction. Here it is downwards.
-        thermal_energy = 1.
-        save_trials, saved_states = trial_spin_flips(state, thermal_energy, flips=500)
-        visualize_states(save_trials, saved_states)
+        part_a(spins=20)
     elif args.part == 'b':
-        part_b(spins)
-    elif args.part == 'c' or 'd':
+        part_b(spins=20)
+    elif args.part == 'c' or args.part == 'd':
+        spins = 20  # Number of spins in the system
         thermal_energies = [i+1 for i in range(10)]  # Choose kT = 1, 2, ..., 10
         simulations = 100  # Number of independent simulations for each thermal energy
         avg_energy_particle = []
@@ -166,10 +174,10 @@ def main():
         for thermal_energy in thermal_energies:
             time_avg_energies = []
             specific_heats = []
-            for j in range(simulations):
+            for _ in range(simulations):
                 state = [-1 for _ in range(spins)]
                 trial_spin_flips(state, thermal_energy, flips=1000)  # Run the initial state for 1000 flips first.
-                energies = trial_spin_flips(state, thermal_energy, flips=1000)  # Now get the energies after eq.
+                energies, _ = trial_spin_flips(state, thermal_energy, flips=1000)  # Now get the energies after eq.
                 average_energy = np.mean(energies)
                 average_squared_energy = np.mean(np.array(energies) ** 2)
                 specific_heat = (average_squared_energy - average_energy**2)/(thermal_energy**2)
@@ -209,6 +217,25 @@ def main():
                 plt.title('Specific heat per particle at constant volume over 1,000 trial spin \n '
                           f'flips, after equilibrium has been reached, for {simulations:,.0f} simulations each')
                 plt.show()
+    elif args.part == 'e':
+        spins = 20
+        thermal_energies = [i + 1. for i in range(10)]  # Choose kT = 1, 2, ..., 10
+        simulations = 100  # Number of independent simulations for each thermal energy
+        h_values = [0., 0.1, 1., 10.]
+        temperatures = np.linspace(np.min(thermal_energies), np.max(thermal_energies), num=100)
+        for h in h_values:
+            magnetisation_particle = []
+            for thermal_energy in thermal_energies:
+                mean_magnetisation = []
+                for _ in range(simulations):
+                    state = [-1 for _ in range(spins)]
+                    trial_spin_flips(state, thermal_energy, flips=1000, h=h)  # Reach equilibrium
+                    _, magnetisation_values = trial_spin_flips(state, thermal_energy, flips=1000, h=h)
+                    mean_magnetisation.append(np.mean(magnetisation_values))
+                magnetisation_particle.append(np.mean(mean_magnetisation)/spins)
+            plt.plot(thermal_energies, magnetisation_particle, 'o')
+            plt.plot(temperatures, analytical_magnetisation(temperatures, h))
+        plt.show()
 
 
 if __name__ == '__main__':

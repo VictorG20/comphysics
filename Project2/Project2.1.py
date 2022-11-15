@@ -249,6 +249,12 @@ def main():
             plt.title('Mean magnetization per particle over 1,000 flip spin trials after \n '
                       f'equilibrium has been reached and over {simulations:,.0f} simulations')
             plt.show()
+    elif args.part == 'f':
+        spins = 20
+        state = rng.choice([-1, 1], size=spins)
+        print(state)
+    else:
+        print('Not a valid part of the project. Only options available are from a to f.')
 
 
 if __name__ == '__main__':

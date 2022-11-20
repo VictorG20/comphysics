@@ -139,7 +139,7 @@ def part_b(spins):
         averaged_energies = np.mean(simulation_energy, axis=0)
         squared_energies = [[energy ** 2 for energy in energies] for energies in simulation_energy]
         averaged_squared_energies = np.mean(squared_energies, axis=0)
-        monte_carlo_error = np.sqrt((averaged_squared_energies - averaged_energies ** 2) / spins)
+        monte_carlo_error = np.sqrt((averaged_squared_energies - averaged_energies ** 2) / simulations)
         plt.plot(t, averaged_energies, label='$k_{B}T =$' + f'{thermal_energies[i]}', color=colors[i])
         plt.fill_between(t, averaged_energies - monte_carlo_error, averaged_energies + monte_carlo_error,
                          color=colors[i], alpha=0.3)

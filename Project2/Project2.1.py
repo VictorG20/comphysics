@@ -205,11 +205,11 @@ def main():
         else:
             plt.plot(thermal_energies, specific_heat_particle, 'o', color='b', label='Simulated values')
             plt.plot(temperatures, 1/((temperatures**2) * (np.cosh(1/temperatures))**2), color='r',
-                     label='$(J/k_{B}T)^{2}/\\cosh^{2}{(J/k_{B}T)}$')
+                     label='Thermodynamic limit')
             ax = plt.gca()
             ax.set_xticks(np.arange(1, 11, 1.0))
             plt.xlabel('$k_{B}T$ (in units of $J$)')
-            plt.ylabel('$c_{V}(k_{B}T)$')
+            plt.ylabel('$c_{V}/k_{B}$')
             plt.legend()
             if args.save:
                 plt.savefig(f'P2-1{args.part}.png', dpi=1200)
